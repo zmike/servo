@@ -10,6 +10,7 @@ use interfaces::{cef_browser_t, cef_browser_host_t, cef_client_t, cef_frame_t};
 use interfaces::{cef_request_context_t};
 use servo::Browser;
 use types::{cef_browser_settings_t, cef_string_t, cef_window_info_t};
+use util::opts;
 use window;
 
 use compositing::windowing::{WindowNavigateMsg, WindowEvent};
@@ -18,6 +19,7 @@ use libc::c_int;
 use std::borrow::ToOwned;
 use std::cell::{Cell, RefCell, BorrowState};
 use std::sync::atomic::{AtomicIsize, Ordering};
+use std_url::Url;
 
 thread_local!(pub static ID_COUNTER: AtomicIsize = AtomicIsize::new(0));
 thread_local!(pub static BROWSERS: RefCell<Vec<CefBrowser>> = RefCell::new(vec!()));
@@ -208,6 +210,26 @@ fn browser_host_create(window_info: &cef_window_info_t,
     if callback_executed {
         browser_callback_after_created(browser.clone());
     }
+    let o = opts::get();
+    let mut temp_opts = opts::default_opts();
+    temp_opts.paint_threads = o.paint_threads;
+    temp_opts.layout_threads = o.layout_threads;
+    temp_opts.headless = false;
+    temp_opts.hard_fail = false;
+    temp_opts.enable_text_antialiasing = true;
+    temp_opts.resources_path = match o.resources_path {
+        Some(ref path) => Some(path.clone()),
+        None => None
+    };
+    if url != ptr::null() {
+        unsafe {
+            temp_opts.url = match Url::parse(String::from_utf16(CefWrap::to_rust(url)).unwrap().as_str()) {
+                Ok(u) => u,
+                Err(_) => Url::parse("about:blank").unwrap()
+            };
+        }
+    }
+    opts::set(temp_opts);
     BROWSERS.with(|browsers| {
         browsers.borrow_mut().push(browser.clone());
     });

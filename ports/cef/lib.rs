@@ -4,6 +4,7 @@
 
 #![feature(alloc)]
 #![feature(box_syntax)]
+#![feature(convert)]
 #![feature(plugin)]
 #![feature(link_args)]
 #![feature(thread_local)]
