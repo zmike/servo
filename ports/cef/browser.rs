@@ -90,10 +90,12 @@ pub struct ServoCefBrowser {
     id: isize,
     servo_browser: RefCell<ServoBrowser>,
     message_queue: RefCell<Vec<WindowEvent>>,
+    /// the starting url
+    url: RefCell<Option<String>>,
 }
 
 impl ServoCefBrowser {
-    pub fn new(window_info: &cef_window_info_t, client: CefClient) -> ServoCefBrowser {
+    pub fn new(window_info: &cef_window_info_t, client: CefClient, url: *const cef_string_t) -> ServoCefBrowser {
         let frame = ServoCefFrame::new().as_cef_interface();
         let host = ServoCefBrowserHost::new(client.clone()).as_cef_interface();
 
@@ -109,6 +111,12 @@ impl ServoCefBrowser {
             counter.fetch_add(1, Ordering::SeqCst)
         });
 
+        let u = if url == ptr::null() {
+            None
+        } else {
+            unsafe { Some(String::from_utf16(CefWrap::to_rust(url)).unwrap()) }
+        };
+
         ServoCefBrowser {
             frame: frame,
             host: host,
@@ -117,6 +125,7 @@ impl ServoCefBrowser {
             servo_browser: RefCell::new(servo_browser),
             message_queue: RefCell::new(vec!()),
             id: id,
+            url: RefCell::new(u),
         }
     }
 }
@@ -175,6 +184,15 @@ impl ServoCefBrowserExtensions for CefBrowser {
 pub fn update() {
     BROWSERS.with(|browsers| {
         for browser in browsers.borrow().iter() {
+<<<<<<< HEAD
+=======
+            if browser.downcast().callback_executed.get() == false {
+                browser_callback_after_created(browser.clone());
+            }
+            if browser.downcast().url.borrow_mut().is_some() {
+               browser.downcast().frame.set_url(browser.downcast().url.borrow_mut().take().unwrap());
+            }
+>>>>>>> ca9470a... try setting cef browser url at load with WindowEvent
             browser.send_window_event(WindowEvent::Idle);
         }
     });
@@ -205,31 +223,11 @@ fn browser_host_create(window_info: &cef_window_info_t,
                        client: CefClient,
                        callback_executed: bool)
                        -> CefBrowser {
-    let browser = ServoCefBrowser::new(window_info, client).as_cef_interface();
+    let browser = ServoCefBrowser::new(window_info, client, url).as_cef_interface();
     browser.init(window_info);
     if callback_executed {
         browser_callback_after_created(browser.clone());
     }
-    let o = opts::get();
-    let mut temp_opts = opts::default_opts();
-    temp_opts.paint_threads = o.paint_threads;
-    temp_opts.layout_threads = o.layout_threads;
-    temp_opts.headless = false;
-    temp_opts.hard_fail = false;
-    temp_opts.enable_text_antialiasing = true;
-    temp_opts.resources_path = match o.resources_path {
-        Some(ref path) => Some(path.clone()),
-        None => None
-    };
-    if url != ptr::null() {
-        unsafe {
-            temp_opts.url = match Url::parse(String::from_utf16(CefWrap::to_rust(url)).unwrap().as_str()) {
-                Ok(u) => u,
-                Err(_) => Url::parse("about:blank").unwrap()
-            };
-        }
-    }
-    opts::set(temp_opts);
     BROWSERS.with(|browsers| {
         browsers.borrow_mut().push(browser.clone());
     });

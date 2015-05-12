@@ -31,11 +31,8 @@ impl ServoCefFrame {
 full_cef_class_impl! {
     ServoCefFrame : CefFrame, cef_frame_t {
         fn load_url(&this, url: *const cef_string_t [&[u16]],) -> () {{
-            let this = this.downcast();
-            let url = String::from_utf16(url).unwrap();
-            *this.url.borrow_mut() = url.clone();
-            let event = WindowEvent::LoadUrl(url);
-            this.browser.borrow_mut().as_mut().unwrap().send_window_event(event);
+            let u = String::from_utf16(url).unwrap();
+            this.set_url(u);
         }}
         fn get_url(&this,) -> cef_string_userfree_t {{
             let this = this.downcast();
@@ -53,10 +50,16 @@ full_cef_class_impl! {
 
 pub trait ServoCefFrameExtensions {
     fn set_browser(&self, browser: CefBrowser);
+    fn set_url(&self, url: String);
 }
 
 impl ServoCefFrameExtensions for CefFrame {
     fn set_browser(&self, browser: CefBrowser) {
         *self.downcast().browser.borrow_mut() = Some(browser)
+    }
+    fn set_url(&self, url: String) {
+        *self.downcast().url.borrow_mut() = url.clone();
+        let event = WindowEvent::LoadUrl(url);
+        (*self.downcast()).browser.borrow_mut().as_mut().unwrap().send_window_event(event);
     }
 }
