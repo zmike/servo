@@ -75,6 +75,7 @@ pub extern "C" fn cef_initialize(args: *const cef_main_args_t,
     temp_opts.enable_text_antialiasing = true;
     temp_opts.enable_canvas_antialiasing = true;
     temp_opts.url = None;
+    temp_opts.graphics_select = opts::RenderApi::ES2;
     opts::set_defaults(temp_opts);
 
     if unsafe { (*settings).windowless_rendering_enabled != 0 } {

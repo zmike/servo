@@ -37,6 +37,7 @@ use std::sync::mpsc::{Sender, channel};
 use std_url::Url;
 use util::cursor::Cursor;
 use util::geometry::ScreenPx;
+use util::opts;
 #[cfg(target_os="linux")]
 extern crate x11;
 #[cfg(target_os="linux")]
@@ -288,7 +289,14 @@ impl WindowMethods for Window {
     fn native_display(&self) -> NativeDisplay {
         use x11::xlib;
         unsafe {
-            NativeDisplay::new(DISPLAY as *mut xlib::Display)
+            match opts::get().graphics_select {
+                opts::RenderApi::GL => {
+                    NativeDisplay::new(DISPLAY as *mut xlib::Display)
+                },
+                opts::RenderApi::ES2 => {
+                    NativeDisplay::from_es2()
+                }
+            }
         }
     }
 
